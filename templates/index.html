@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atualizar Estoque de Produto</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        #log {
+            height: 300px;
+            overflow-y: scroll;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container text-center mt-5">
+        <h1>Atualizar Estoque de Produto</h1>
+        <div class="row mt-4">
+            <div class="col-md-6 mb-3">
+                <button class="btn btn-primary btn-lg btn-block" onclick="atualizarEstoque('93642', '439109')">De Matriz para MRN</button>
+            </div>
+            <div class="col-md-6 mb-3">
+                <button class="btn btn-secondary btn-lg btn-block" onclick="atualizarEstoque('439109', '93642')">De MRN para Matriz</button>
+            </div>
+        </div>
+        <div id="log" class="text-left"></div>
+    </div>
+
+    <script>
+        async function pegarProdutosAtualizado(idLoja) {
+            let produtosAtualizados = [];
+            let paginaAtual = 1;
+
+            while (true) {
+                logMessage(`LOG: Pegando Produtos na Página: ${paginaAtual}`);
+                const url = `https://api.gestaoclick.com/produtos?loja_id=${idLoja}&pagina=${paginaAtual}`;
+
+                const headers = {
+                    'access-token': '3076727a4d1aa63c37dad01d898cbd5e76be736c',
+                    'secret-access-token': '78431bbea7a34f085aca7e8d0352628148145947'
+                };
+
+                const response = await fetch(url, { headers });
+
+                if (response.status === 200) {
+                    const data = await response.json();
+
+                    produtosAtualizados = produtosAtualizados.concat(data.data);
+
+                    paginaAtual += 1;
+
+                    if (paginaAtual > data.meta.total_paginas) {
+                        break;
+                    }
+                } else {
+                    logMessage(`LOG: Erro ao pegar produtos da página ${paginaAtual}. Status: ${response.status}`);
+                    break;
+                }
+            }
+
+            return produtosAtualizados;
+        }
+
+        async function atualizarProduto(idLoja, produtoPayLoad) {
+            const url = `https://api.gestaoclick.com/produtos/${produtoPayLoad.id}?loja_id=${idLoja}`;
+            const payload = JSON.stringify(produtoPayLoad);
+
+            const headers = {
+                'access-token': '3076727a4d1aa63c37dad01d898cbd5e76be736c',
+                'secret-access-token': '78431bbea7a34f085aca7e8d0352628148145947',
+                'Content-Type': 'application/json'
+            };
+
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: headers,
+                body: payload
+            });
+
+            logMessage(`LOG: Status-Code: ${response.status} / Produto - ${produtoPayLoad.nome}`);
+        }
+
+        async function atualizarEstoque(lojaOrigem, lojaDestino) {
+            const produtosParaAtualizar = await pegarProdutosAtualizado(lojaOrigem);
+
+            for (const produto of produtosParaAtualizar) {
+                await atualizarProduto(lojaDestino, produto);
+            }
+
+            logMessage(`Total de Produtos Atualizados: ${produtosParaAtualizar.length}`);
+        }
+
+        function logMessage(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += `<p>${message}</p>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
